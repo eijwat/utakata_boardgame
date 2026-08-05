@@ -1,4 +1,4 @@
-# UTAKATA うたかた
+# UTAKATA boardgame うたかた
 
 **Every stone is a bubble — it will vanish. Reach the far shore before it does.**
 **置いた石は、やがて泡と消える。消えるまえに、岸から岸へ。**
