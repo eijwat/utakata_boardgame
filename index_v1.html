@@ -247,130 +247,24 @@ var U=(function(){
   }
   function clone(g){return JSON.parse(JSON.stringify(g));}
   function legalMoves(g){var mv=[];for(var r=0;r<N;r++)for(var c=0;c<N;c++)if(!g.board[r][c])mv.push([r,c]);return mv;}
-  /* ---------- stronger CPU: iterative deepening + alpha-beta ---------- */
-  function stoneValue(g,p){
-    var v=0;
-    for(var r=0;r<N;r++)for(var c=0;c<N;c++){
-      var s=g.board[r][c];if(!s||s.p!==p)continue;
-      var remain=LIFE-(g.placed[p]-s.born);
-      /* Long-lived stones are more reliable links than stones about to vanish. */
-      v+=2+remain*0.7;
-      /* A small preference for central, flexible stones. */
-      v+=(2.5-Math.abs(r-2.5)+2.5-Math.abs(c-2.5))*0.12;
-    }
-    return v;
-  }
-  function edgeTouch(g,p){
-    var a=0,b=0;
-    for(var i=0;i<N;i++){
-      if(p===0){if(g.board[0][i]&&g.board[0][i].p===p)a=1;if(g.board[N-1][i]&&g.board[N-1][i].p===p)b=1;}
-      else{if(g.board[i][0]&&g.board[i][0].p===p)a=1;if(g.board[i][N-1]&&g.board[i][N-1].p===p)b=1;}
-    }
-    return a+b;
-  }
-  function evaluate(g,me){
-    var opp=1-me;
-    if(g.winner!==null){
-      if(g.winner===me)return 10000000;
-      return-10000000;
-    }
-    var myD=pathDist(g,me),opD=pathDist(g,opp);
-    var myS=bestSpan(g,me),opS=bestSpan(g,opp);
-    var score=(opD-myD)*150+(myS-opS)*34;
-    score+=(stoneValue(g,me)-stoneValue(g,opp))*4;
-    score+=(edgeTouch(g,me)-edgeTouch(g,opp))*18;
-    return score;
-  }
-  function stateKey(g,depth,me){
-    var a=[g.turn,g.placed[0],g.placed[1],depth,me];
-    for(var r=0;r<N;r++)for(var c=0;c<N;c++){
-      var s=g.board[r][c];
-      a.push(s?(s.p===0?'b':'w')+(LIFE-(g.placed[s.p]-s.born)):'.');
-    }
-    return a.join('');
-  }
-  function winningSquares(g,p){
-    var out=[],x=clone(g);x.turn=p,mv=legalMoves(x);
-    for(var i=0;i<mv.length;i++){
-      var y=clone(x);place(y,mv[i][0],mv[i][1]);
-      if(y.winner===p)out.push(mv[i][0]+','+mv[i][1]);
-    }
-    return out;
-  }
-  function quickMoveScore(g,m,me,oppWins){
-    var key=m[0]+','+m[1],x=clone(g);place(x,m[0],m[1]);
-    if(x.winner===me)return 1e9;
-    var sc=evaluate(x,me);
-    if(oppWins[key])sc+=800000; /* never prune a direct blocking move */
-    /* Prefer moves that create more than one future route. */
-    var nb=neighbors(x,me,m[0],m[1]),friends=0;
-    for(var i=0;i<nb.length;i++){var s=x.board[nb[i][0]][nb[i][1]];if(s&&s.p===me)friends++;}
-    sc+=friends*10;
-    return sc;
-  }
-  function orderedMoves(g,me,limit){
-    var mv=legalMoves(g),opp=1-g.turn,wins=winningSquares(g,opp),block={};
-    for(var i=0;i<wins.length;i++)block[wins[i]]=1;
-    var scored=[];
-    for(var j=0;j<mv.length;j++)scored.push({m:mv[j],s:quickMoveScore(g,mv[j],g.turn,block),must:!!block[mv[j][0]+','+mv[j][1]]});
-    scored.sort(function(a,b){return b.s-a.s;});
-    if(!limit||scored.length<=limit)return scored.map(function(x){return x.m;});
-    var out=[],used={};
-    /* Keep every immediate block even when move pruning is active. */
-    for(var k=0;k<scored.length;k++)if(scored[k].must){var z=scored[k].m,kk=z[0]+','+z[1];if(!used[kk]){out.push(z);used[kk]=1;}}
-    for(var q=0;q<scored.length&&out.length<limit;q++){var z2=scored[q].m,kk2=z2[0]+','+z2[1];if(!used[kk2]){out.push(z2);used[kk2]=1;}}
-    return out;
-  }
   function cpuMove(g){
-    var me=g.turn,mv=legalMoves(g),i;
-    if(!mv.length)return null;
-    /* Exact one-ply tactics first. */
-    for(i=0;i<mv.length;i++){var w=clone(g);place(w,mv[i][0],mv[i][1]);if(w.winner===me)return mv[i];}
-
-    var deadline=Date.now()+520; /* keeps the browser responsive on ordinary devices */
-    var table={},timedOut=false,nodes=0;
-    function search(pos,depth,alpha,beta,ply){
-      nodes++;
-      if((nodes&127)===0&&Date.now()>deadline){timedOut=true;return evaluate(pos,me);}
-      if(pos.winner!==null){var z=evaluate(pos,me);return z>0?z-ply:z+ply;}
-      if(depth===0)return evaluate(pos,me);
-      var key=stateKey(pos,depth,me),hit=table[key];if(hit!==undefined)return hit;
-      var maximizing=pos.turn===me;
-      var lim=depth>=4?9:depth===3?11:14;
-      var moves=orderedMoves(pos,me,lim);
-      var best=maximizing?-1e18:1e18;
-      for(var k=0;k<moves.length;k++){
-        var child=clone(pos);place(child,moves[k][0],moves[k][1]);
-        var val=search(child,depth-1,alpha,beta,ply+1);
-        if(timedOut)return val;
-        if(maximizing){if(val>best)best=val;if(best>alpha)alpha=best;}
-        else{if(val<best)best=val;if(best<beta)beta=best;}
-        if(beta<=alpha)break;
+    var me=g.turn,opp=1-me,mv=legalMoves(g),i;
+    for(i=0;i<mv.length;i++){var g2=clone(g);place(g2,mv[i][0],mv[i][1]);if(g2.winner===me)return mv[i];}
+    var threats=false,gv=clone(g);gv.turn=opp;var mv2=legalMoves(gv);
+    for(var j=0;j<mv2.length;j++){var g3=clone(gv);place(g3,mv2[j][0],mv2[j][1]);if(g3.winner===opp){threats=true;break;}}
+    var best=null,bs=-1e18;
+    for(var k=0;k<mv.length;k++){
+      var g4=clone(g);place(g4,mv[k][0],mv[k][1]);
+      var myD=pathDist(g4,me),opD=pathDist(g4,opp);
+      var score=(opD-myD)*10-myD*2;
+      if(threats&&g4.winner===null){
+        var still=false,mv3=legalMoves(g4);
+        for(var t=0;t<mv3.length;t++){var g6=clone(g4);place(g6,mv3[t][0],mv3[t][1]);if(g6.winner===opp){still=true;break;}}
+        if(!still)score+=100000;
       }
-      table[key]=best;return best;
-    }
-
-    var root=orderedMoves(g,me,0),best=root[0],bestScore=-1e18;
-    /* Iterative deepening: always retain the last fully completed result. */
-    for(var depth=1;depth<=5;depth++){
-      var iterBest=best,iterScore=-1e18,complete=true;
-      var rootLimit=depth>=4?Math.min(root.length,18):root.length;
-      for(var r=0;r<rootLimit;r++){
-        if(Date.now()>deadline){complete=false;break;}
-        var child=clone(g);place(child,root[r][0],root[r][1]);
-        var val=search(child,depth-1,-1e18,1e18,1);
-        if(timedOut){complete=false;break;}
-        if(val>iterScore){iterScore=val;iterBest=root[r];}
-      }
-      if(!complete)break;
-      best=iterBest;bestScore=iterScore;
-      /* Put the principal variation first in the next iteration. */
-      root.sort(function(a,b){
-        if(a[0]===best[0]&&a[1]===best[1])return-1;
-        if(b[0]===best[0]&&b[1]===best[1])return 1;
-        return 0;
-      });
-      if(bestScore>9000000)break;
+      score+=(2.5-Math.abs(mv[k][0]-2.5))+(2.5-Math.abs(mv[k][1]-2.5));
+      score+=Math.random()*0.5;
+      if(score>bs){bs=score;best=mv[k];}
     }
     return best;
   }
