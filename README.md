@@ -48,7 +48,7 @@ The rules were tuned by self-play experiments. With orthogonal-only connections,
 - Japanese/English interface with browser-language auto-detection and a live toggle
 - Pure algorithmic CPU: shortest-connection-distance evaluation with immediate-win detection and verified blocking
 
-### GitHub Pages
+## Play @ GitHub Pages !
 
 [Utakata Boardgame](https://eijwat.github.io/utakata_boardgame/)
 
@@ -95,6 +95,6 @@ The rules were tuned by self-play experiments. With orthogonal-only connections,
 - 日英バイリンガルUI。ブラウザ言語の自動判定と、いつでも切り替え可能なトグル
 - CPUは純アルゴリズム：最短接続距離の評価＋即勝ち検出＋ブロック検証
 
-### GitHub Pages
+## GitHub Pagesで遊びましょう！
 
 [Utakata Boardgame](https://eijwat.github.io/utakata_boardgame/)
