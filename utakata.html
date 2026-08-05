@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>UTAKATA うたかた</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a161f;          /* 夜の水深 */
+  --panel:#101f2b;
+  --panel2:#152836;
+  --line:#1d3444;
+  --ink:#e6f0f2;
+  --dim:#7e99a8;
+  --aqua:#8fd8cf;        /* 水明かり */
+  --aqua-soft:#8fd8cf55;
+  --black-stone:#0b0f14;
+  --white-stone:#f1f3ee;
+  --danger:#e0a05c;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  background:
+    radial-gradient(1200px 500px at 50% -10%, #12293a 0%, transparent 60%),
+    var(--bg);
+  color:var(--ink);
+  font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
+  display:flex;flex-direction:column;align-items:center;
+  min-height:100%;
+  user-select:none;-webkit-user-select:none;
+}
+header{
+  width:100%;max-width:460px;display:flex;align-items:center;gap:8px;
+  padding:12px 14px 6px;
+}
+#logo{flex:1;display:flex;align-items:baseline;gap:8px}
+#logo .latin{font-size:19px;font-weight:700;letter-spacing:.14em}
+#logo .kana{font-family:"Shippori Mincho",serif;color:var(--aqua);font-size:14px}
+button.flat{
+  background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+  border-radius:9px;padding:7px 12px;font-size:12.5px;cursor:pointer;
+}
+button.flat:active{transform:translateY(1px)}
+#scorebar{
+  width:100%;max-width:460px;display:flex;gap:8px;padding:6px 14px 0;
+}
+.chip{
+  flex:1;display:flex;align-items:center;gap:8px;
+  background:var(--panel);border:1px solid var(--line);border-radius:11px;
+  padding:8px 11px;font-size:12.5px;color:var(--dim);
+  transition:border-color .25s, box-shadow .25s;
+}
+.chip.on{border-color:var(--aqua);box-shadow:0 0 0 1px var(--aqua-soft);color:var(--ink)}
+.chip .dot{width:15px;height:15px;border-radius:50%;flex:none;border:1px solid #0006}
+.chip .dot.b{background:radial-gradient(circle at 34% 30%, #3d4a56, #0b0f14 65%)}
+.chip .dot.w{background:radial-gradient(circle at 34% 30%, #ffffff, #d9ddd4 70%)}
+.chip .who{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip .goal{font-size:13px;color:var(--aqua);font-weight:700}
+#status{
+  width:100%;max-width:460px;padding:8px 14px 2px;min-height:34px;
+  font-size:13px;color:var(--aqua);text-align:center;line-height:1.5;
+}
+#board-wrap{width:100%;max-width:460px;padding:6px 14px}
+svg#board{width:100%;height:auto;display:block;border-radius:14px}
+#legend{
+  width:100%;max-width:460px;padding:4px 18px 14px;
+  font-size:11px;color:var(--dim);text-align:center;line-height:1.7;
+}
+.cell-hit{fill:transparent;cursor:pointer}
+.cell-glow{fill:var(--aqua);opacity:0;pointer-events:none;transition:opacity .15s}
+.cell-hit:hover + .cell-glow{opacity:.13}
+.stone{transition:opacity .5s}
+.win-ring{fill:none;stroke:var(--aqua);stroke-width:2.6;opacity:.95}
+.pop-ring{fill:none;stroke:var(--aqua);stroke-width:2;animation:pop 1s ease-out forwards;pointer-events:none}
+@keyframes pop{
+  0%{opacity:.9;stroke-width:3}
+  100%{opacity:0;stroke-width:.5;r:26}
+}
+.modal-bg{
+  position:fixed;inset:0;background:#000a;display:flex;align-items:center;justify-content:center;
+  z-index:20;padding:18px;
+}
+.hidden{display:none!important}
+.modal{
+  background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:22px 20px;max-width:400px;width:100%;max-height:82vh;overflow-y:auto;
+  font-size:13.5px;line-height:1.8;
+}
+.modal h2{font-size:17px;margin-bottom:10px}
+.modal h2 .kana{font-family:"Shippori Mincho",serif;color:var(--aqua);font-size:14px;margin-left:6px}
+.modal h3{font-size:13.5px;margin:14px 0 4px;color:var(--aqua)}
+.modal p,.modal li{color:#d5dfe2}
+.modal ul{padding-left:19px}
+.modal .fig{display:flex;justify-content:center;margin:10px 0 2px}
+.close-row{text-align:right;margin-top:14px}
+#mode-card,#result-card{
+  background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:28px 24px;text-align:center;width:100%;max-width:340px;
+}
+#mode-card h2,#result-card h2{font-size:18px;margin-bottom:6px}
+#mode-card .kana2{font-family:"Shippori Mincho",serif;color:var(--aqua);font-size:14px}
+#mode-card p{font-size:12px;color:var(--dim);margin:6px 0 16px;line-height:1.7}
+#mode-card button,#result-card button{margin:5px 4px;font-size:14px;padding:10px 18px;display:inline-block}
+#mode-card .stack button{display:block;width:100%;margin:8px 0}
+#result-title{font-family:"Shippori Mincho",serif;font-size:22px;color:var(--aqua);margin:8px 0 4px}
+#result-detail{font-size:13px;color:var(--dim);margin:8px 0 14px;line-height:1.7}
+@media (prefers-reduced-motion: reduce){
+  .pop-ring{animation-duration:.4s}
+}
+</style>
+</head>
+<body>
+<header>
+  <div id="logo"><span class="latin">UTAKATA</span><span class="kana">うたかた</span></div>
+  <button class="flat" id="btn-lang">EN</button>
+  <button class="flat" id="btn-rules">ルール</button>
+  <button class="flat" id="btn-new">新規</button>
+</header>
+<div id="scorebar">
+  <div class="chip" id="chip-0"><span class="dot b"></span><span class="who" id="who-0"></span><span class="goal">↕</span></div>
+  <div class="chip" id="chip-1"><span class="dot w"></span><span class="who" id="who-1"></span><span class="goal">↔</span></div>
+</div>
+<div id="status"><span id="status-text"></span></div>
+<div id="board-wrap"><svg id="board" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 360"></svg></div>
+<div id="legend"><span id="legend-text"></span></div>
+
+<div class="modal-bg hidden" id="rules-modal">
+  <div class="modal">
+    <div id="rules-body"></div>
+    <div class="close-row"><button class="flat" id="btn-rules-close">閉じる</button></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="mode-modal">
+  <div id="mode-card">
+    <h2>UTAKATA <span class="kana2">うたかた</span></h2>
+    <p id="mode-tag"></p>
+    <div class="stack">
+      <button class="flat" id="btn-cpu-b"></button>
+      <button class="flat" id="btn-cpu-w"></button>
+      <button class="flat" id="btn-2p"></button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg hidden" id="result-modal">
+  <div id="result-card">
+    <h2 id="result-head"></h2>
+    <div id="result-title"></div>
+    <div id="result-detail"></div>
+    <button class="flat" id="btn-again"></button>
+  </div>
+</div>
+
+<script>
+/* ================= UTAKATA core ================= */
+var U=(function(){
+  var N=6,LIFE=8,CAP=25;
+  var ORTH=[[1,0],[-1,0],[0,1],[0,-1]],DIAGD=[[1,1],[1,-1],[-1,1],[-1,-1]];
+  function newGame(){var b=[];for(var r=0;r<N;r++){b.push([]);for(var c=0;c<N;c++)b[r].push(null);}
+    return{board:b,turn:0,placed:[0,0],winner:null,reason:null,lastDied:[],winCells:null,spans:null,last:null};}
+  function inb(r,c){return r>=0&&r<N&&c>=0&&c<N;}
+  function diagOK(g,p,r0,c0,r1,c1){
+    var a=g.board[r0][c1],b=g.board[r1][c0];
+    return!((a&&a.p!==p)&&(b&&b.p!==p));
+  }
+  function neighbors(g,p,r,c){
+    var out=[],d;
+    for(d=0;d<4;d++){var r1=r+ORTH[d][0],c1=c+ORTH[d][1];if(inb(r1,c1))out.push([r1,c1]);}
+    for(d=0;d<4;d++){var r2=r+DIAGD[d][0],c2=c+DIAGD[d][1];
+      if(inb(r2,c2)&&diagOK(g,p,r,c,r2,c2))out.push([r2,c2]);}
+    return out;
+  }
+  function connected(g,p){
+    var seen={},st=[],i;
+    for(i=0;i<N;i++){var r=(p===0)?0:i,c=(p===0)?i:0,s=g.board[r][c];
+      if(s&&s.p===p){st.push([r,c]);seen[r+','+c]=1;}}
+    while(st.length){var cur=st.pop(),r0=cur[0],c0=cur[1];
+      if((p===0&&r0===N-1)||(p===1&&c0===N-1))return true;
+      var nb=neighbors(g,p,r0,c0);
+      for(var d=0;d<nb.length;d++){var r1=nb[d][0],c1=nb[d][1],k=r1+','+c1;
+        if(seen[k])continue;var s2=g.board[r1][c1];
+        if(s2&&s2.p===p){seen[k]=1;st.push([r1,c1]);}}}
+    return false;
+  }
+  function winPath(g,p){
+    var seen={},best=null;
+    for(var r=0;r<N;r++)for(var c=0;c<N;c++){
+      var s=g.board[r][c];if(!s||s.p!==p||seen[r+','+c])continue;
+      var st=[[r,c]],cells=[],e0=false,e1=false;seen[r+','+c]=1;
+      while(st.length){var cur=st.pop(),r0=cur[0],c0=cur[1];cells.push(cur);
+        if(p===0){if(r0===0)e0=true;if(r0===N-1)e1=true;}
+        else{if(c0===0)e0=true;if(c0===N-1)e1=true;}
+        var nb=neighbors(g,p,r0,c0);
+        for(var d=0;d<nb.length;d++){var r1=nb[d][0],c1=nb[d][1],k=r1+','+c1;
+          if(seen[k])continue;var s2=g.board[r1][c1];
+          if(s2&&s2.p===p){seen[k]=1;st.push([r1,c1]);}}}
+      if(e0&&e1)best=cells;
+    }
+    return best;
+  }
+  function bestSpan(g,p){
+    var seen={},best=0;
+    for(var r=0;r<N;r++)for(var c=0;c<N;c++){
+      var s=g.board[r][c];if(!s||s.p!==p||seen[r+','+c])continue;
+      var st=[[r,c]],lo=1e9,hi=-1e9;seen[r+','+c]=1;
+      while(st.length){var cur=st.pop(),r0=cur[0],c0=cur[1],v=(p===0)?r0:c0;
+        if(v<lo)lo=v;if(v>hi)hi=v;
+        var nb=neighbors(g,p,r0,c0);
+        for(var d=0;d<nb.length;d++){var r1=nb[d][0],c1=nb[d][1],k=r1+','+c1;
+          if(seen[k])continue;var s2=g.board[r1][c1];
+          if(s2&&s2.p===p){seen[k]=1;st.push([r1,c1]);}}}
+      if(hi-lo+1>best)best=hi-lo+1;}
+    return best;
+  }
+  function place(g,r,c){
+    if(g.winner!==null||!inb(r,c)||g.board[r][c])return false;
+    var p=g.turn;g.placed[p]++;g.board[r][c]={p:p,born:g.placed[p]};
+    g.last=[r,c];
+    g.lastDied=[];
+    for(var rr=0;rr<N;rr++)for(var cc=0;cc<N;cc++){var s=g.board[rr][cc];
+      if(s&&s.p===p&&(g.placed[p]-s.born)>=LIFE){g.lastDied.push([rr,cc]);g.board[rr][cc]=null;}}
+    if(connected(g,p)){g.winner=p;g.reason='connect';g.winCells=winPath(g,p);return true;}
+    if(g.placed[0]>=CAP&&g.placed[1]>=CAP){
+      var s0=bestSpan(g,0),s1=bestSpan(g,1);
+      g.winner=(s0>s1)?0:1;g.reason='span';g.spans=[s0,s1];return true;}
+    g.turn=1-p;return true;
+  }
+  function pathDist(g,p){
+    var INF=1e9,dist=[],dq=[];
+    for(var r=0;r<N;r++){dist.push([]);for(var c=0;c<N;c++)dist[r].push(INF);}
+    function cost(r,c){var s=g.board[r][c];if(!s)return 1;return(s.p===p)?0:-1;}
+    for(var i=0;i<N;i++){var r0=(p===0)?0:i,c0=(p===0)?i:0,cs=cost(r0,c0);
+      if(cs<0)continue;if(cs<dist[r0][c0]){dist[r0][c0]=cs;(cs===0)?dq.unshift([r0,c0]):dq.push([r0,c0]);}}
+    while(dq.length){var cur=dq.shift(),r1=cur[0],c1=cur[1],d0=dist[r1][c1];
+      var nb=neighbors(g,p,r1,c1);
+      for(var d=0;d<nb.length;d++){var r2=nb[d][0],c2=nb[d][1],cs2=cost(r2,c2);
+        if(cs2<0)continue;var nd=d0+cs2;
+        if(nd<dist[r2][c2]){dist[r2][c2]=nd;(cs2===0)?dq.unshift([r2,c2]):dq.push([r2,c2]);}}}
+    var best=INF;
+    for(var j=0;j<N;j++){var rr=(p===0)?N-1:j,cc=(p===0)?j:N-1;
+      if(dist[rr][cc]<best)best=dist[rr][cc];}
+    return best;
+  }
+  function clone(g){return JSON.parse(JSON.stringify(g));}
+  function legalMoves(g){var mv=[];for(var r=0;r<N;r++)for(var c=0;c<N;c++)if(!g.board[r][c])mv.push([r,c]);return mv;}
+  function cpuMove(g){
+    var me=g.turn,opp=1-me,mv=legalMoves(g),i;
+    for(i=0;i<mv.length;i++){var g2=clone(g);place(g2,mv[i][0],mv[i][1]);if(g2.winner===me)return mv[i];}
+    var threats=false,gv=clone(g);gv.turn=opp;var mv2=legalMoves(gv);
+    for(var j=0;j<mv2.length;j++){var g3=clone(gv);place(g3,mv2[j][0],mv2[j][1]);if(g3.winner===opp){threats=true;break;}}
+    var best=null,bs=-1e18;
+    for(var k=0;k<mv.length;k++){
+      var g4=clone(g);place(g4,mv[k][0],mv[k][1]);
+      var myD=pathDist(g4,me),opD=pathDist(g4,opp);
+      var score=(opD-myD)*10-myD*2;
+      if(threats&&g4.winner===null){
+        var still=false,mv3=legalMoves(g4);
+        for(var t=0;t<mv3.length;t++){var g6=clone(g4);place(g6,mv3[t][0],mv3[t][1]);if(g6.winner===opp){still=true;break;}}
+        if(!still)score+=100000;
+      }
+      score+=(2.5-Math.abs(mv[k][0]-2.5))+(2.5-Math.abs(mv[k][1]-2.5));
+      score+=Math.random()*0.5;
+      if(score>bs){bs=score;best=mv[k];}
+    }
+    return best;
+  }
+  return{N:N,LIFE:LIFE,CAP:CAP,newGame:newGame,place:place,cpuMove:cpuMove,legalMoves:legalMoves};
+})();
+
+/* ================= i18n ================= */
+var I18N={
+ja:{
+  rules:'ルール',newgame:'新規',close:'閉じる',langBtn:'EN',again:'もう一度',
+  you:'あなた',cpu:'CPU',p1:'プレイヤー1',p2:'プレイヤー2',
+  black:'黒',white:'白',
+  modeTag:'置いた石は、やがて泡と消える。<br>消えるまえに、岸から岸へ。',
+  modeCpuB:'先手（黒・上下）で挑む',
+  modeCpuW:'後手（白・左右）で挑む',
+  mode2p:'ふたりで遊ぶ',
+  legend:'数字＝あと何手（自分の手番）で消えるか。「1」の石は次の自分の手で消える',
+  statusYourTurn:'あなたの番　—　空きマスをタップ',
+  statusTurnOf:function(p){return p+'の番';},
+  statusThinking:'CPUが考えています…',
+  statusCpuPlaced:'CPUが置きました。あなたの番',
+  gameOver:'対局終了',
+  winConnect:function(p){return p+'がつながりました！';},
+  winSpan:function(p){return '手数上限。判定で'+p+'の勝ち';},
+  resultConnect:'岸と岸がつながった',
+  resultSpan:function(a,b){return '判定：到達幅 黒'+a+' ― 白'+b;},
+  moveCount:function(n){return '総手数 '+n;},
+  rulesHTML:
+    '<h2>UTAKATA<span class="kana">うたかた</span> ルール v0.1</h2>'
+    +'<p>石は泡。置いても、やがて消えます。消えるまえに、自分の岸と岸をつなげた人の勝ちです。</p>'
+    +'<h3>勝ち方</h3>'
+    +'<ul><li>6×6の盤に、黒白交互に石を置きます（黒が先手）。</li>'
+    +'<li><b>黒は上の辺と下の辺</b>、<b>白は左の辺と右の辺</b>を、自分の石のひとつながりで結べば勝ち。</li>'
+    +'<li>石は縦・横・<b>ななめ</b>につながります。</li></ul>'
+    +'<h3>ななめの切断</h3>'
+    +'<ul><li>ただし、ななめのつながりを<b>相手の石2つが×の形で横切っている</b>とき、そのななめは切れます（お互いさま。×の形では両方とも切れます）。</li></ul>'
+    +'<div class="fig">__CUTFIG__</div>'
+    +'<h3>泡の寿命</h3>'
+    +'<ul><li>石には寿命があります。<b>自分が8手置くと、いちばん古い自分の石が消えます</b>（盤上の自分の石はいつも最大8個）。</li>'
+    +'<li>石の数字は<b>「あと何手（自分の手番）で消えるか」</b>のカウントダウン。<b>「1」の石はオレンジ色になり、次の自分の手で消えます</b>。</li>'
+    +'<li>永遠の壁は作れません。守りは崩れつづけ、攻めは一瞬の完成を狙います。</li></ul>'
+    +'<h3>判定</h3>'
+    +'<ul><li>どちらもつなげないまま各25手に達したら、いちばん進んだ石の群れの「到達幅」で判定。同点なら後手の白の勝ちです。</li></ul>'
+    +'<h3>ヒント</h3>'
+    +'<p>相手の道をふさぐ石も、いつか消えます。「いつ消えるか」まで読めたら、あなたはもう泡の達人です。</p>',
+},
+en:{
+  rules:'Rules',newgame:'New',close:'Close',langBtn:'日本語',again:'Play again',
+  you:'You',cpu:'CPU',p1:'Player 1',p2:'Player 2',
+  black:'Black',white:'White',
+  modeTag:'Every stone is a bubble — it will vanish.<br>Reach the far shore before it does.',
+  modeCpuB:'Play first (Black · top–bottom)',
+  modeCpuW:'Play second (White · left–right)',
+  mode2p:'Two players',
+  legend:'Number = moves of yours left before the stone vanishes. A "1" goes on your next move',
+  statusYourTurn:'Your turn — tap an empty cell',
+  statusTurnOf:function(p){return p+"'s turn";},
+  statusThinking:'CPU is thinking…',
+  statusCpuPlaced:'CPU placed a stone. Your turn',
+  gameOver:'Game over',
+  winConnect:function(p){return p+' connected!';},
+  winSpan:function(p){return 'Move limit reached — '+p+' wins on spread';},
+  resultConnect:'Shore to shore, connected',
+  resultSpan:function(a,b){return 'Adjudication: spread Black '+a+' — White '+b;},
+  moveCount:function(n){return 'Total moves '+n;},
+  rulesHTML:
+    '<h2>UTAKATA<span class="kana">うたかた</span> Rules v0.1</h2>'
+    +'<p><i>Utakata</i> means foam on water — the old Japanese image of things that never last. Your stones are bubbles: they will vanish. Connect your shores before they do.</p>'
+    +'<h3>How to win</h3>'
+    +'<ul><li>Take turns placing stones on the 6×6 board (Black first).</li>'
+    +'<li><b>Black connects the top and bottom edges</b>; <b>White connects the left and right edges</b> with one unbroken chain.</li>'
+    +'<li>Stones connect vertically, horizontally, and <b>diagonally</b>.</li></ul>'
+    +'<h3>The diagonal cut</h3>'
+    +'<ul><li>But if <b>two enemy stones cross your diagonal in an × shape</b>, that diagonal link is cut. (It works both ways — in a full crosscut, both diagonals are severed.)</li></ul>'
+    +'<div class="fig">__CUTFIG__</div>'
+    +'<h3>A bubble\'s life</h3>'
+    +'<ul><li>Stones don\'t last. <b>When you place your 8th stone after one, that oldest stone vanishes</b> — you never have more than 8 on the board.</li>'
+    +'<li>The number on each stone counts down <b>how many of your own moves it has left</b>. <b>A stone showing "1" turns amber — it vanishes the next time you place</b>.</li>'
+    +'<li>No wall is forever. Defenses dissolve; attacks aim for one perfect moment.</li></ul>'
+    +'<h3>Adjudication</h3>'
+    +'<ul><li>If neither side connects within 25 stones each, the widest reach of a single group decides it. Ties go to White (who moved second).</li></ul>'
+    +'<h3>Hint</h3>'
+    +'<p>The stone blocking your path will vanish too. Read <i>when</i>, and you are a master of foam.</p>',
+}
+};
+
+/* crosscut figure (shared) */
+function cutFig(){
+  var s='<svg width="150" height="110" viewBox="0 0 150 110" xmlns="http://www.w3.org/2000/svg">';
+  function cell(x,y){return '<rect x="'+x+'" y="'+y+'" width="44" height="44" rx="7" fill="#152836" stroke="#1d3444"/>';}
+  s+=cell(28,8)+cell(76,8)+cell(28,56)+cell(76,56);
+  s+='<line x1="50" y1="30" x2="98" y2="78" stroke="#8fd8cf" stroke-width="2" stroke-dasharray="3 4" opacity=".7"/>';
+  s+='<circle cx="50" cy="30" r="14" fill="#0b0f14" stroke="#3d4a56"/>';
+  s+='<circle cx="98" cy="78" r="14" fill="#0b0f14" stroke="#3d4a56"/>';
+  s+='<circle cx="98" cy="30" r="14" fill="#f1f3ee"/>';
+  s+='<circle cx="50" cy="78" r="14" fill="#f1f3ee"/>';
+  s+='<line x1="66" y1="46" x2="82" y2="62" stroke="#e0a05c" stroke-width="3" stroke-linecap="round"/>';
+  s+='<line x1="82" y1="46" x2="66" y2="62" stroke="#e0a05c" stroke-width="3" stroke-linecap="round"/>';
+  s+='</svg>';
+  return s;
+}
+
+/* ================= app state ================= */
+var lang=(navigator.languages&&navigator.languages[0]||navigator.language||'ja').slice(0,2)==='ja'?'ja':'en';
+var G=null;
+var mode=null;           // 'cpu' | '2p'
+var humanSide=0;         // in cpu mode: 0=black,1=white
+var busy=false;
+
+function T(k){return I18N[lang][k];}
+function playerName(p){
+  if(mode==='2p')return (p===0?T('p1'):T('p2'))+'（'+(p===0?T('black'):T('white'))+'）';
+  if(p===humanSide)return T('you')+'（'+(p===0?T('black'):T('white'))+'）';
+  return T('cpu')+'（'+(p===0?T('black'):T('white'))+'）';
+}
+
+/* ================= board rendering ================= */
+var SVGNS='http://www.w3.org/2000/svg';
+var CELL=52,PAD=24,SZ=360; /* 24 + 6*52 = 336, +24 = 360 */
+function xy(r,c){return{x:PAD+c*CELL+CELL/2,y:PAD+r*CELL+CELL/2};}
+
+function el(tag,attrs){
+  var e=document.createElementNS(SVGNS,tag);
+  for(var k in attrs)e.setAttribute(k,attrs[k]);
+  return e;
+}
+
+function render(){
+  var svg=document.getElementById('board');
+  svg.innerHTML='';
+  /* defs: stone gradients */
+  var defs=el('defs',{});
+  defs.innerHTML=
+    '<radialGradient id="gb" cx="34%" cy="30%" r="80%">'
+    +'<stop offset="0%" stop-color="#46586a"/><stop offset="60%" stop-color="#141b24"/><stop offset="100%" stop-color="#0b0f14"/></radialGradient>'
+    +'<radialGradient id="gw" cx="34%" cy="30%" r="80%">'
+    +'<stop offset="0%" stop-color="#ffffff"/><stop offset="70%" stop-color="#eceee7"/><stop offset="100%" stop-color="#cfd4c9"/></radialGradient>'
+    +'<linearGradient id="water" x1="0" y1="0" x2="0" y2="1">'
+    +'<stop offset="0%" stop-color="#10222f"/><stop offset="100%" stop-color="#0d1c27"/></linearGradient>';
+  svg.appendChild(defs);
+  /* water */
+  svg.appendChild(el('rect',{x:0,y:0,width:SZ,height:SZ,rx:14,fill:'url(#water)'}));
+  /* goal shores */
+  svg.appendChild(el('rect',{x:PAD,y:6,width:SZ-PAD*2,height:7,rx:3.5,fill:'#0b0f14',stroke:'#3d4a56','stroke-width':.8}));
+  svg.appendChild(el('rect',{x:PAD,y:SZ-13,width:SZ-PAD*2,height:7,rx:3.5,fill:'#0b0f14',stroke:'#3d4a56','stroke-width':.8}));
+  svg.appendChild(el('rect',{x:6,y:PAD,width:7,height:SZ-PAD*2,rx:3.5,fill:'#e9ebe4'}));
+  svg.appendChild(el('rect',{x:SZ-13,y:PAD,width:7,height:SZ-PAD*2,rx:3.5,fill:'#e9ebe4'}));
+  /* grid cells */
+  var r,c;
+  for(r=0;r<U.N;r++)for(c=0;c<U.N;c++){
+    svg.appendChild(el('rect',{x:PAD+c*CELL+2,y:PAD+r*CELL+2,width:CELL-4,height:CELL-4,rx:8,
+      fill:'#152836',stroke:'#1d3444','stroke-width':1}));
+  }
+  /* win highlight under stones */
+  if(G&&G.winCells){
+    for(var i=0;i<G.winCells.length;i++){
+      var p0=xy(G.winCells[i][0],G.winCells[i][1]);
+      svg.appendChild(el('circle',{cx:p0.x,cy:p0.y,r:23,'class':'win-ring'}));
+    }
+  }
+  /* stones */
+  if(G)for(r=0;r<U.N;r++)for(c=0;c<U.N;c++){
+    var st=G.board[r][c];
+    if(!st)continue;
+    var pos=xy(r,c);
+    var age=G.placed[st.p]-st.born;
+    var op=1-age*(0.5/U.LIFE);
+    var remain=U.LIFE-age;
+    var grp=el('g',{'class':'stone',opacity:op.toFixed(2)});
+    grp.appendChild(el('circle',{cx:pos.x,cy:pos.y,r:19,fill:st.p===0?'url(#gb)':'url(#gw)',
+      stroke:st.p===0?'#3d4a56':'#b9beb1','stroke-width':1}));
+    var numColor=(remain===1)?'#e0a05c':(st.p===0?'#9db4c2':'#5a6577');
+    var num=el('text',{x:pos.x,y:pos.y+4.5,'text-anchor':'middle',
+      'font-size':(remain===1)?'14':'12','font-weight':'700',fill:numColor,
+      'font-family':'system-ui,sans-serif'});
+    num.textContent=remain;
+    grp.appendChild(num);
+    svg.appendChild(grp);
+    /* last move marker */
+    if(G.last&&G.last[0]===r&&G.last[1]===c&&G.winner===null){
+      svg.appendChild(el('circle',{cx:pos.x,cy:pos.y,r:4,fill:'var(--aqua)',opacity:.9}));
+    }
+  }
+  /* vanish ripples */
+  if(G&&G.lastDied.length){
+    for(var j=0;j<G.lastDied.length;j++){
+      var pd=xy(G.lastDied[j][0],G.lastDied[j][1]);
+      svg.appendChild(el('circle',{cx:pd.x,cy:pd.y,r:14,'class':'pop-ring'}));
+    }
+  }
+  /* hit + glow layers (only when playable) */
+  if(G&&G.winner===null){
+    for(r=0;r<U.N;r++)for(c=0;c<U.N;c++){
+      if(G.board[r][c])continue;
+      var pos2=xy(r,c);
+      var hit=el('rect',{x:PAD+c*CELL,y:PAD+r*CELL,width:CELL,height:CELL,'class':'cell-hit'});
+      (function(rr,cc){hit.addEventListener('click',function(){onTap(rr,cc);});})(r,c);
+      svg.appendChild(hit);
+      svg.appendChild(el('circle',{cx:pos2.x,cy:pos2.y,r:16,'class':'cell-glow'}));
+    }
+  }
+  /* chips */
+  document.getElementById('who-0').textContent=playerName(0);
+  document.getElementById('who-1').textContent=playerName(1);
+  document.getElementById('chip-0').className='chip'+((G&&G.winner===null&&G.turn===0)?' on':'');
+  document.getElementById('chip-1').className='chip'+((G&&G.winner===null&&G.turn===1)?' on':'');
+}
+
+/* ================= flow ================= */
+function setStatus(html){document.getElementById('status-text').innerHTML=html;}
+
+function startGame(m,side){
+  mode=m;humanSide=side||0;
+  G=U.newGame();busy=false;
+  document.getElementById('mode-modal').classList.add('hidden');
+  document.getElementById('result-modal').classList.add('hidden');
+  render();
+  nextTurn();
+}
+function nextTurn(){
+  if(G.winner!==null){finish();return;}
+  if(mode==='cpu'&&G.turn!==humanSide){
+    setStatus(T('statusThinking'));busy=true;
+    setTimeout(function(){
+      var m=U.cpuMove(G);
+      U.place(G,m[0],m[1]);
+      busy=false;render();
+      if(G.winner!==null){finish();}
+      else setStatus(T('statusCpuPlaced'));
+    },420);
+  }else{
+    if(mode==='cpu')setStatus(T('statusYourTurn'));
+    else setStatus(T('statusTurnOf')(playerName(G.turn)));
+  }
+}
+function onTap(r,c){
+  if(busy||!G||G.winner!==null)return;
+  if(mode==='cpu'&&G.turn!==humanSide)return;
+  if(!U.place(G,r,c))return;
+  render();
+  nextTurn();
+}
+function finish(){
+  render();
+  var w=G.winner,name=playerName(w);
+  var head=T('gameOver');
+  var title,detail;
+  if(G.reason==='connect'){
+    setStatus(T('winConnect')(name));
+    title=T('winConnect')(name);
+    detail=T('resultConnect')+'<br>'+T('moveCount')(G.placed[0]+G.placed[1]);
+  }else{
+    setStatus(T('winSpan')(name));
+    title=T('winSpan')(name);
+    detail=T('resultSpan')(G.spans[0],G.spans[1])+'<br>'+T('moveCount')(G.placed[0]+G.placed[1]);
+  }
+  document.getElementById('result-head').textContent=head;
+  document.getElementById('result-title').innerHTML=title;
+  document.getElementById('result-detail').innerHTML=detail;
+  setTimeout(function(){document.getElementById('result-modal').classList.remove('hidden');},900);
+}
+
+/* ================= i18n apply ================= */
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.getElementById('btn-lang').textContent=T('langBtn');
+  document.getElementById('btn-rules').textContent=T('rules');
+  document.getElementById('btn-new').textContent=T('newgame');
+  document.getElementById('btn-rules-close').textContent=T('close');
+  document.getElementById('btn-again').textContent=T('again');
+  document.getElementById('mode-tag').innerHTML=T('modeTag');
+  document.getElementById('btn-cpu-b').textContent=T('modeCpuB');
+  document.getElementById('btn-cpu-w').textContent=T('modeCpuW');
+  document.getElementById('btn-2p').textContent=T('mode2p');
+  document.getElementById('legend-text').textContent=T('legend');
+  document.getElementById('rules-body').innerHTML=T('rulesHTML').replace('__CUTFIG__',cutFig());
+  if(G){
+    render();
+    if(G.winner!==null)finish();
+    else if(mode==='cpu'&&G.turn!==humanSide)setStatus(T('statusThinking'));
+    else if(mode==='cpu')setStatus(T('statusYourTurn'));
+    else setStatus(T('statusTurnOf')(playerName(G.turn)));
+  }
+}
+
+/* ================= wiring ================= */
+document.getElementById('btn-lang').addEventListener('click',function(){lang=(lang==='ja')?'en':'ja';applyLang();});
+document.getElementById('btn-rules').addEventListener('click',function(){document.getElementById('rules-modal').classList.remove('hidden');});
+document.getElementById('btn-rules-close').addEventListener('click',function(){document.getElementById('rules-modal').classList.add('hidden');});
+document.getElementById('btn-new').addEventListener('click',function(){document.getElementById('result-modal').classList.add('hidden');document.getElementById('mode-modal').classList.remove('hidden');});
+document.getElementById('btn-again').addEventListener('click',function(){document.getElementById('result-modal').classList.add('hidden');document.getElementById('mode-modal').classList.remove('hidden');});
+document.getElementById('btn-cpu-b').addEventListener('click',function(){startGame('cpu',0);});
+document.getElementById('btn-cpu-w').addEventListener('click',function(){startGame('cpu',1);});
+document.getElementById('btn-2p').addEventListener('click',function(){startGame('2p',0);});
+
+applyLang();
+render();
+</script>
+</body>
+</html>
